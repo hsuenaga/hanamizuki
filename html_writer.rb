@@ -359,7 +359,9 @@ EOS
 
       @authors.each do |voter|
         write_tr(f, nil) do 
-          write_td(f, voter.name)
+          write_td(f, nil) do
+            write_author_link(f, voter)
+          end
           @authors.each do |author|
             if author == voter then
               write_td_blackout(f, "")
