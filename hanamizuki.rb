@@ -159,19 +159,22 @@ class AuthorList
     @id += 1
     author = Author.new(idx, name)
 
-    @names[name] = idx
+    @names[name] = author
     @ids.insert(idx, author)
-    idx
+    author
   end
 
   def profile(name, profile)
-    idx = append(name)
-    author = @ids[idx]
+    author = append(name)
     author.profile = profile
   end
 
   def byname(name)
-    if @name.has_key?(name)
+    if NameReplace.has_key?(name)
+      name = NameReplace[name]
+    end
+
+    if @names.has_key?(name)
       return @names[name]
     end
     nil
@@ -202,13 +205,13 @@ class AuthorList
 end
 
 class Haiku
-  attr_reader :fname, :composition, :author_id, :point, :sort_val
+  attr_reader :fname, :composition, :author, :point, :sort_val
   attr_accessor :id
 
-  def initialize(fname, composition, author_id)
+  def initialize(fname, composition, author)
     @fname = fname
     @composition = composition
-    @author_id = author_id
+    @author = author
     @id = 0
     @point = 0
     @sort_val = 0
@@ -227,8 +230,8 @@ class HaikuList
     @id = 0
   end
 
-  def append(fname, composition, author_id)
-    haiku = Haiku.new(fname, composition, author_id)
+  def append(fname, composition, author)
+    haiku = Haiku.new(fname, composition, author)
     raise DuplicatedHaiku if @db.has_key?(composition)
 
     idx = @id
@@ -243,7 +246,7 @@ class HaikuList
   def bycomposition(composition)
     return nil unless @db.has_key?(composition)
 
-    @db[composition].id
+    @db[composition]
   end
 
   def byid(id)
@@ -275,6 +278,21 @@ class HaikuList
       end
     end
     count
+  end
+
+  def each_by_author(author, &block)
+    array = Array.new()
+    @id_list.each do |haiku|
+      next if haiku.author != author
+      array << haiku
+    end
+    array = array.sort_by do |haiku|
+      haiku.point
+    end
+    array.reverse!
+    array.each do |haiku|
+      block.call(haiku)
+    end
   end
 end
 
@@ -331,10 +349,11 @@ class ThemeList
 end
 
 class Vote
-  attr_reader :fname, :haiku_id, :rank, :from
-  def initialize(fname, haiku_id, rank, from)
+  attr_reader :fname, :haiku, :rank, :rank_str, :from
+  def initialize(fname, haiku, rank, from)
     @fname = fname
-    @haiku_id = haiku_id
+    @haiku = haiku
+    @rank_str = rank
     @rank = Rank::parse_rank(rank)
     @from = from
   end
@@ -345,15 +364,17 @@ class VoteList
     @votes = Array.new()
   end
 
-  def vote(fname, hdb, adb, composition, rank, from_id)
-    haiku_id = hdb.bycomposition(composition)
-    raise HaikuNotFound unless haiku_id
+  def vote(fname, haikus, authors, composition, rank, from_name)
+    haiku = haikus.bycomposition(composition)
+    raise HaikuNotFound unless haiku
 
-    haiku = hdb.byid(haiku_id)
-    to = adb.byid(haiku.author_id())
-    from = adb.byid(from_id)
+    to = haiku.author
+    from = authors.byname(from_name)
+    if !from
+      print("Author not found: #{from_name}\n")
+    end
 
-    v = Vote.new(fname, haiku_id, rank, from)
+    v = Vote.new(fname, haiku, rank, from)
     @votes << v
 
     haiku.vote(v.rank)
@@ -361,8 +382,24 @@ class VoteList
   end
 
   def each(&block)
-    @votes.each do |v|
-      block.call(v)
+    @votes.each do |vote|
+      block.call(vote)
+    end
+  end
+
+  def each_by_haiku(haiku, &block)
+    array = Array.new()
+    @votes.each do |vote|
+      if vote.haiku == haiku
+        array << vote
+      end
+    end
+    array = array.sort_by() do |vote|
+      vote.rank
+    end
+    array.reverse!()
+    array.each do |vote|
+      block.call(vote)
     end
   end
 end
@@ -394,13 +431,12 @@ class Contest
   end
 
   def parse_haiku(composition, author)
-    id = @authors.append(author)
-    @haikus.append(@cur_file, composition, id)
+    author = @authors.append(author)
+    @haikus.append(@cur_file, composition, author)
   end
 
-  def parse_vote(rank, composition, from)
-    id = @authors.append(from)
-    @votes.vote(@cur_file, @haikus, @authors, composition, rank, id)
+  def parse_vote(rank, composition, from_name)
+    @votes.vote(@cur_file, @haikus, @authors, composition, rank, from_name)
   end
 
   def parse_winner(fname, winner, point)

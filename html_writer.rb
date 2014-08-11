@@ -22,6 +22,10 @@ class HtmlWriter
     "haiku_#{haiku.id}.html"
   end
 
+  def author_file(author)
+    "author_#{author.id}.html"
+  end
+
   def _fwrite(output, &block)
     return nil unless block
 
@@ -69,6 +73,12 @@ class HtmlWriter
   # inline tag
   def write_h1(f, string)
     tag(f, "H1") do
+      f.print(string)
+    end
+  end
+
+  def write_h2(f, string)
+    tag(f, "H2") do
       f.print(string)
     end
   end
@@ -189,13 +199,20 @@ class HtmlWriter
     end
   end
 
+  def write_author_link(f, author)
+    author_link = "#{my_url}/#{author_file(author)}"
+    write_link(f, author_link, author.name)
+  end
+
   def write_authors(f)
     write_h1(f, "俳号一覧")
     write_table(f, "simple") do
       write_tr_th(f, ["俳号", "プロフィール"])
       @authors.each do |author|
         write_tr(f, nil) do
-          write_td(f, author.name)
+          write_td(f, nil) do
+            write_author_link(f, author)
+          end
           write_td(f, author.profile)
         end
       end
@@ -212,7 +229,10 @@ class HtmlWriter
           write_td(f, nil) do
             write_ul(f, theme.words)
           end
-          write_td(f, theme.winner)
+          write_td(f, nil) do
+            author = @authors.byname(theme.winner)
+            write_author_link(f, author) if author
+          end
           write_td(f, theme.winner_point)
           write_td(f, @haikus.count_fname(theme.fname))
         end
@@ -234,12 +254,44 @@ EOS
       @authors.sort_by_point() do |author|
         write_tr(f, nil) do
           write_td(f, rank)
-          write_td(f, author.name)
+          write_td(f, nil) do
+            write_author_link(f, author)
+          end
           write_td(f, author.point)
         end
         rank += 1
       end
     end
+  end
+
+  def write_author_file(author)
+    return unless @outdir
+    author_file = "#{@outdir}/#{author_file(author)}"
+    _fwrite(author_file) do |f|
+      write_header(f)
+
+      write_h1(f, author.name)
+      write_p(f, author.profile)
+      write_table(f, "simple") do
+        write_tr_th(f, ["俳句", "得点", "開催月"])
+        @haikus.each_by_author(author) do |haiku|
+          write_tr(f, nil) do
+            write_td(f, nil) do
+              write_haiku_link(f, haiku)
+            end
+            write_td(f, haiku.point)
+            write_td(f, haiku.fname)
+          end
+        end
+      end
+
+      write_footer(f)
+    end
+  end
+
+  def write_haiku_link(f, haiku)
+    haiku_link = "#{my_url}/#{haiku_file(haiku)}"
+    write_link(f, haiku_link, haiku.composition)
   end
 
   def write_haiku_ranking(f)
@@ -251,19 +303,41 @@ EOS
       write_tr_th(f, ["順位", "俳句", "俳号", "得点", "開催月"])
       rank = 1
       @haikus.sort_by_point() do |haiku|
-        haiku_link="#{@my_url}/#{haiku_file(haiku)}"
         write_tr(f, nil) do
-          author = @authors.byid(haiku.author_id())
+          author = haiku.author
           write_td(f, rank)
           write_td(f, nil) do
-            write_link(f, haiku_link, haiku.composition)
+            write_haiku_link(f, haiku)
           end
-          write_td(f, author.name)
+          write_td(f, nil) do
+            write_author_link(f, author)
+          end
           write_td(f, haiku.point)
           write_td(f, haiku.fname)
         end
         rank += 1
       end
+    end
+  end
+
+  def write_haiku_file(haiku)
+    return unless @outdir
+    haiku_file = "#{@outdir}/#{haiku_file(haiku)}"
+    _fwrite(haiku_file) do |f|
+      author = haiku.author
+      write_header(f)
+      write_h1(f, "#{haiku.composition} −#{author.name}")
+      write_h2(f, "選句")
+      write_table(f, nil) do
+        write_tr_th(f, ["評価", "俳号"])
+        @votes.each_by_haiku(haiku) do |vote|
+          write_tr(f, nil) do
+            write_td(f, vote.rank_str())
+            write_td(f, vote.from.name)
+          end
+        end
+      end
+      write_footer(f)
     end
   end
 
@@ -332,18 +406,6 @@ EOS
 EOS
   end
 
-  def write_haiku(haiku)
-    return unless @outdir
-    haiku_file = "#{@outdir}/#{haiku_file(haiku)}"
-    _fwrite(haiku_file) do |f|
-      write_header(f)
-      write_h1(f, haiku.composition)
-      write_p(f, @authors.byid(haiku.author_id()).name)
-      write_link(f, @my_url, "戻る")
-      write_footer(f)
-    end
-  end
-
   def write(outdir)
     @outdir = outdir
     output = nil
@@ -368,7 +430,11 @@ EOS
     end
 
     @haikus.each() do |haiku|
-      write_haiku(haiku)
+      write_haiku_file(haiku)
+    end
+
+    @authors.each() do |author|
+      write_author_file(author)
     end
   end
 end
