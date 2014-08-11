@@ -7,5 +7,5 @@ parse:
 	   iconv -f utf-8 -t sjis -o ../deploy/$${i} $${i}; done
 
 clean:
-	rm tmp_output.html
-	rm output.html
+	rm output/*.html
+	rm deploy/*.html

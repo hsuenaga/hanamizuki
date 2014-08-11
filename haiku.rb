@@ -1,9 +1,10 @@
 class Haiku
-  attr_reader :fname, :composition, :author, :point, :sort_val
+  attr_reader :fname, :composition, :author, :point, :sort_val, :word
   attr_accessor :id
 
-  def initialize(fname, composition, author)
+  def initialize(fname, composition, author, word)
     @fname = fname
+    @word = word
     @composition = composition
     @author = author
     @id = 0
@@ -24,8 +25,8 @@ class HaikuList
     @id = 0
   end
 
-  def append(fname, composition, author)
-    haiku = Haiku.new(fname, composition, author)
+  def append(fname, composition, author, word)
+    haiku = Haiku.new(fname, composition, author, word)
     raise DuplicatedHaiku if @db.has_key?(composition)
 
     idx = @id
@@ -64,7 +65,7 @@ class HaikuList
     end
   end
 
-  def count_fname(fname)
+  def count_by_fname(fname)
     count = 0
     @id_list.each do |haiku|
       if haiku.fname == fname then
@@ -77,7 +78,37 @@ class HaikuList
   def each_by_author(author, &block)
     array = Array.new()
     @id_list.each do |haiku|
-      next if haiku.author != author
+      next unless haiku.author == author
+      array << haiku
+    end
+    array = array.sort_by do |haiku|
+      haiku.point
+    end
+    array.reverse!
+    array.each do |haiku|
+      block.call(haiku)
+    end
+  end
+
+  def each_by_fname(fname, &block)
+    array = Array.new()
+    @id_list.each do |haiku|
+      next unless haiku.fname == fname
+      array << haiku
+    end
+    array = array.sort_by do |haiku|
+      haiku.point
+    end
+    array.reverse!
+    array.each do |haiku|
+      block.call(haiku)
+    end
+  end
+
+  def each_by_word(word, &block)
+    array = Array.new()
+    @id_list.each do |haiku|
+      next unless haiku.word == word
       array << haiku
     end
     array = array.sort_by do |haiku|

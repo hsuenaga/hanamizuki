@@ -26,6 +26,21 @@ class HtmlWriter
     "author_#{author.id}.html"
   end
 
+  def theme_file(theme)
+    "theme_#{theme.id}.html"
+  end
+
+  def word_file(word)
+    "word_#{word.id}.html"
+  end
+
+  def fname2date(fname)
+    s = fname.split("-")
+    y = s[0].to_i() - 1989
+    m = s[1].to_i()
+    "平成#{y}年#{m}月"
+  end
+
   def _fwrite(output, &block)
     return nil unless block
 
@@ -118,9 +133,10 @@ class HtmlWriter
     end
   end
 
-  def write_li(f, string)
+  def write_li(f, string, &block)
     tag(f, "LI") do
-      write_text(f, string)
+      write_text(f, string) if string
+      block.call() if block
     end
   end
 
@@ -191,6 +207,17 @@ class HtmlWriter
     end
   end
 
+  def write_hr(f, style = nil)
+    write_text(f, "\n")
+    indent(f) do
+      if style then
+        write_text(f, "<HR class=\"#{style}\"/>")
+      else
+        write_text(f, "<HR/>")
+      end
+    end
+  end
+
   ## content
   def write_site_description(f)
     write_h1(f, @site_name)
@@ -219,24 +246,106 @@ class HtmlWriter
     end
   end
 
+  def write_theme_link(f, theme)
+    date = fname2date(theme.fname)
+    theme_link = "#{my_url}/#{theme_file(theme)}"
+    write_link(f, theme_link, date)
+  end
+
+  def write_word_link(f, word)
+    word_link = "#{my_url}/#{word_file(word)}"
+    write_link(f, word_link, word.string)
+  end
+
   def write_themes(f)
     write_h1(f, "季題")
     write_table(f, "theme") do
       write_tr_th(f, ["投句月", "季題", "優勝", "優勝得点", "投句数"])
       @themes.each do |theme|
         write_tr(f, nil) do
-          write_td(f, theme.fname)
           write_td(f, nil) do
-            write_ul(f, theme.words)
+            write_theme_link(f, theme)
+          end
+          write_td(f, nil) do
+            write_ul(f, nil) do
+              theme.each do |word|
+                write_li(f, nil) do
+                  write_word_link(f, word)
+                end
+              end
+            end
           end
           write_td(f, nil) do
             author = @authors.byname(theme.winner)
             write_author_link(f, author) if author
           end
           write_td(f, theme.winner_point)
-          write_td(f, @haikus.count_fname(theme.fname))
+          write_td(f, @haikus.count_by_fname(theme.fname))
         end
       end
+    end
+  end
+
+  def write_theme_file(theme)
+    return unless @outdir
+    theme_file = "#{@outdir}/#{theme_file(theme)}"
+    _fwrite(theme_file) do |f|
+      write_header(f)
+
+      write_h1(f, fname2date(theme.fname))
+      write_hr(f, "shadow_down")
+      write_ul(f, nil) do
+        theme.each() do |word|
+          write_li(f, nil) do
+            write_word_link(f, word)
+          end
+        end
+      end
+      write_hr(f, "shadow_down")
+      write_table(f, "simple") do
+        write_tr_th(f, ["俳句", "俳号", "得点"])
+        @haikus.each_by_fname(theme.fname) do |haiku|
+          write_tr(f, nil) do
+            write_td(f, nil) do
+              write_haiku_link(f, haiku)
+            end
+            write_td(f, nil) do
+              write_author_link(f, haiku.author)
+            end
+            write_td(f, haiku.point)
+          end
+        end
+      end
+
+      write_footer(f)
+    end
+  end
+
+  def write_word_file(word)
+    return unless @outdir
+    word_file = "#{@outdir}/#{word_file(word)}"
+    _fwrite(word_file) do |f|
+      write_header(f)
+
+      write_h1(f, word.string)
+      write_hr(f, "shadow_down")
+      write_theme_link(f, word.theme)
+      write_table(f, "simple") do
+        write_tr_th(f, ["俳句", "俳号", "得点"])
+        @haikus.each_by_word(word.string) do |haiku|
+          write_tr(f, nil) do
+            write_td(f, nil) do
+              write_haiku_link(f, haiku)
+            end
+            write_td(f, nil) do
+              write_author_link(f, haiku.author)
+            end
+            write_td(f, haiku.point)
+          end
+        end
+      end
+
+      write_footer(f)
     end
   end
 
@@ -271,6 +380,7 @@ EOS
       write_header(f)
 
       write_h1(f, author.name)
+      write_hr(f, "shadow_down")
       write_p(f, author.profile)
       write_table(f, "simple") do
         write_tr_th(f, ["俳句", "得点", "開催月"])
@@ -280,7 +390,10 @@ EOS
               write_haiku_link(f, haiku)
             end
             write_td(f, haiku.point)
-            write_td(f, haiku.fname)
+            theme = @themes.byfname(haiku.fname)
+            write_td(f, nil) do
+              write_theme_link(f, theme)
+            end
           end
         end
       end
@@ -313,7 +426,10 @@ EOS
             write_author_link(f, author)
           end
           write_td(f, haiku.point)
-          write_td(f, haiku.fname)
+          theme = @themes.byfname(haiku.fname)
+          write_td(f, nil) do
+            write_theme_link(f, theme)
+          end
         end
         rank += 1
       end
@@ -327,6 +443,9 @@ EOS
       author = haiku.author
       write_header(f)
       write_h1(f, "#{haiku.composition} −#{author.name}")
+      write_hr(f, "shadow_down")
+      theme = @themes.byfname(haiku.fname)
+      write_theme_link(f, theme)
       write_h2(f, "選句")
       write_table(f, nil) do
         write_tr_th(f, ["評価", "俳号"])
@@ -384,7 +503,7 @@ EOS
     f.print("--></STYLE>\n")
   end
 
-  def write_header(f)
+  def write_header(f, omit_link = false)
     f.print(<<EOS)
 <HTML>
 <HEAD>
@@ -399,9 +518,13 @@ EOS
 
 <BODY>
 EOS
+  f.print("<A href=\"#{@my_url}\">TOPページ</A>\n") unless omit_link
+  f.print("<HR class=\"simple\"/>\n")
   end
 
-  def write_footer(f)
+  def write_footer(f, omit_link = false)
+    f.print("<HR class=\"simple\"/>\n")
+    f.print("<A href=\"#{@my_url}\">TOPページ</A>\n") unless omit_link
     f.print(<<EOS)
 </BODY>
 </HTML>
@@ -421,14 +544,17 @@ EOS
 
     ## main contents
     _fwrite(output) do |f|
-      write_header(f)
+      write_header(f, true)
+
       write_site_description(f)
+      write_hr(f, "shadow_down")
       write_authors(f)
       write_themes(f)
       write_authors_ranking(f)
       write_haiku_ranking(f)
       write_vote_analysis(f)
-      write_footer(f)
+
+      write_footer(f, true)
     end
 
     @haikus.each() do |haiku|
@@ -437,6 +563,14 @@ EOS
 
     @authors.each() do |author|
       write_author_file(author)
+    end
+
+    @themes.each() do |theme|
+      write_theme_file(theme)
+    end
+
+    @themes.each_word() do |word|
+      write_word_file(word)
     end
   end
 end

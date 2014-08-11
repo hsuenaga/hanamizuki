@@ -5,6 +5,7 @@ class DuplicatedHaiku < Exception; end
 class HaikuNotFound < Exception; end
 class ParseError < Exception; end
 class InvalidRank < Exception; end
+class InvalidFname < Exception; end
 UserExceptions = [DuplicatedHaiku, HaikuNotFound, ParseError, InvalidRank]
 
 def exception_handler(exception, file, line, string)
@@ -17,6 +18,8 @@ def exception_handler(exception, file, line, string)
     print("評価が不明")
   when ParseError
     print("文法エラー")
+  when InvalidFname
+    print("季題が見つからない")
   else
     print("未定義エラー")
   end

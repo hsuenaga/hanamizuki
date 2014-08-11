@@ -46,6 +46,7 @@ class Hanamizuki
     @votes = VoteList.new()
 
     @cur_voter = nil
+    @cur_word = nil
     @cur_file = nil
     @cur_line = 0
     @cur_content = nil
@@ -63,9 +64,9 @@ class Hanamizuki
     @authors.append(string)
   end
 
-  def parse_haiku(composition, author)
+  def parse_haiku(composition, author, word)
     author = @authors.append(author)
-    @haikus.append(@cur_file, composition, author)
+    @haikus.append(@cur_file, composition, author, word)
   end
 
   def parse_vote(rank, composition, from_name)
@@ -102,6 +103,7 @@ class Hanamizuki
       when 1
         if a[0].index("「")
           parse_theme(a[0])
+          @cur_word = a[0]
         elsif a[0].index("選")
           parse_author(a[0])
           @cur_voter = a[0]
@@ -109,7 +111,7 @@ class Hanamizuki
           raise ParseError
         end
       when 2
-        parse_haiku(a[0], a[1])
+        parse_haiku(a[0], a[1], @cur_word)
       when 3
         parse_vote(a[0], a[1], @cur_voter)
       else
