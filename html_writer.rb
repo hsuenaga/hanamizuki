@@ -36,7 +36,7 @@ class HtmlWriter
 
   def fname2date(fname)
     s = fname.split("-")
-    y = s[0].to_i() - 1989
+    y = s[0].to_i() - 1989 + 1
     m = s[1].to_i()
     "平成#{y}年#{m}月"
   end
