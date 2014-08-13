@@ -95,6 +95,13 @@ class ThemeList
       end
     end
   end
+
+  def getword(string)
+    each_word do |word|
+      return word if word.string == string
+    end
+    return nil
+  end
 end
 
 

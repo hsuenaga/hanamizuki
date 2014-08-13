@@ -34,6 +34,22 @@ class HtmlWriter
     "word_#{word.id}.html"
   end
 
+  def vote_file()
+    "votes_analysis.html"
+  end
+
+  def haiku_rank_file()
+    "haiku_ranking.html"
+  end
+
+  def author_rank_file()
+    "author_ranking.html"
+  end
+
+  def author_profile_file()
+    "author_profile.html"
+  end
+
   def fname2date(fname)
     s = fname.split("-")
     y = s[0].to_i() - 1989 + 1
@@ -86,9 +102,10 @@ class HtmlWriter
   end
 
   # inline tag
-  def write_h1(f, string)
+  def write_h1(f, string, &block)
     tag(f, "H1") do
-      f.print(string)
+      f.print(string) if string
+      block.call() if block
     end
   end
 
@@ -220,19 +237,20 @@ class HtmlWriter
 
   ## content
   def write_site_description(f)
-    write_h1(f, @site_name)
+    write_h1(f, @title)
     write_p(f, nil) do
       write_link(f, @site_url)
     end
   end
 
   def write_author_link(f, author)
-    author_link = "#{my_url}/#{author_file(author)}"
+    author_link = "#{@my_url}/#{author_file(author)}"
     write_link(f, author_link, author.name)
   end
 
   def write_authors(f)
-    write_h1(f, "俳号一覧")
+    write_h1(f, "俳号")
+    write_hr(f, "shadow_down")
     write_table(f, "simple") do
       write_tr_th(f, ["俳号", "プロフィール"])
       @authors.each do |author|
@@ -248,17 +266,16 @@ class HtmlWriter
 
   def write_theme_link(f, theme)
     date = fname2date(theme.fname)
-    theme_link = "#{my_url}/#{theme_file(theme)}"
+    theme_link = "#{@my_url}/#{theme_file(theme)}"
     write_link(f, theme_link, date)
   end
 
   def write_word_link(f, word)
-    word_link = "#{my_url}/#{word_file(word)}"
+    word_link = "#{@my_url}/#{word_file(word)}"
     write_link(f, word_link, word.string)
   end
 
   def write_themes(f)
-    write_h1(f, "季題")
     write_table(f, "theme") do
       write_tr_th(f, ["投句月", "季題", "優勝", "優勝得点", "投句数"])
       @themes.each do |theme|
@@ -349,8 +366,7 @@ class HtmlWriter
     end
   end
 
-  def write_authors_ranking(f)
-    write_h1(f, "個人総合成績")
+  def write_authors_ranking(f, limit = nil)
     write_p(f, <<EOS)
 これまでの互選で各作者が獲得した得点の集計です。参加期間による調整はしていないので、途中参加だったりお休み期間があったりすると低くなります。
 EOS
@@ -369,7 +385,30 @@ EOS
           write_td(f, author.point)
         end
         rank += 1
+        break if limit && rank > limit
       end
+    end
+  end
+
+  def write_author_rank_file()
+    return unless @outdir
+    author_rank_file = "#{@outdir}/#{author_rank_file()}"
+    _fwrite(author_rank_file) do |f|
+      write_header(f)
+      write_h1(f, "個人総合成績")
+      write_hr(f, "shadow_down")
+      write_authors_ranking(f)
+      write_footer(f)
+    end
+  end
+
+  def write_author_profile_file()
+    return unless @outdir
+    author_profile_file = "#{@outdir}/#{author_profile_file()}"
+    _fwrite(author_profile_file) do |f|
+      write_header(f)
+      write_authors(f)
+      write_footer(f)
     end
   end
 
@@ -403,12 +442,11 @@ EOS
   end
 
   def write_haiku_link(f, haiku)
-    haiku_link = "#{my_url}/#{haiku_file(haiku)}"
+    haiku_link = "#{@my_url}/#{haiku_file(haiku)}"
     write_link(f, haiku_link, haiku.composition)
   end
 
-  def write_haiku_ranking(f)
-    write_h1(f, "俳句別総合成績")
+  def write_haiku_ranking(f, limit = nil)
     write_p(f, <<EOS)
 これまでに投句された各俳句が獲得した得点の集計です。
 EOS
@@ -432,7 +470,20 @@ EOS
           end
         end
         rank += 1
+        break if limit && rank > limit
       end
+    end
+  end
+
+  def write_haiku_rank_file()
+    return unless @outdir
+    haiku_rank_file = "#{@outdir}/#{haiku_rank_file()}"
+    _fwrite(haiku_rank_file) do |f|
+      write_header(f)
+      write_h1(f, "俳句別総合成績")
+      write_hr(f, "shadow_down")
+      write_haiku_ranking(f)
+      write_footer(f)
     end
   end
 
@@ -442,17 +493,29 @@ EOS
     _fwrite(haiku_file) do |f|
       author = haiku.author
       write_header(f)
-      write_h1(f, "#{haiku.composition} −#{author.name}")
+      write_h1(f, nil) do
+        write_text(f, "#{haiku.composition}<br>")
+        write_text(f, "−#{author.name}")
+      end
       write_hr(f, "shadow_down")
       theme = @themes.byfname(haiku.fname)
-      write_theme_link(f, theme)
+      write_ul(f, nil) do
+        write_li(f, nil) do
+          write_theme_link(f, theme)
+        end
+        write_li(f, nil) do
+          write_word_link(f, @themes.getword(haiku.word))
+        end
+      end
       write_h2(f, "選句")
       write_table(f, nil) do
         write_tr_th(f, ["評価", "俳号"])
         @votes.each_by_haiku(haiku) do |vote|
           write_tr(f, nil) do
             write_td(f, vote.rank_str())
-            write_td(f, vote.from.name)
+            write_td(f, nil) do
+              write_author_link(f, vote.from)
+            end
           end
         end
       end
@@ -460,36 +523,44 @@ EOS
     end
   end
 
-  def write_vote_analysis(f)
-    write_h1(f, "選句率表")
-    write_p(f, <<EOS)
-誰が誰の俳句を選ぶ傾向があるかの集計です。各選句者がこれまでの選句で投票した全得点に対する、各投句者への投票の割合を出しています。極端な例を除き、参加期間の影響は少なくなります。
-EOS
-    write_p(f, <<EOS)
-表を左から右にたどると、選句者が誰に投票する傾向があるか分かります。上から下にたどると、投句者が誰に選ばれる傾向があるか分かります。
-EOS
-    write_table(f, "score_sheet") do
-      write_tr_th(f, nil) do
-        write_th(f, "")
-        @authors.each do |author|
-          write_th(f, author.name)
-        end
-      end
+  def write_vote_file()
+    return unless @outdir
+    vote_file = "#{@outdir}/#{vote_file()}"
+    _fwrite(vote_file) do |f|
+      write_header(f)
 
-      @authors.each do |voter|
-        write_tr(f, nil) do 
-          write_td(f, nil) do
-            write_author_link(f, voter)
-          end
+      write_h1(f, "選句率表")
+      write_hr(f, "shadow_down")
+      write_p(f, <<EOS)
+  誰が誰の俳句を選ぶ傾向があるかの集計です。各選句者がこれまでの選句で投票した全得点に対する、各投句者への投票の割合を出しています。極端な例を除き、参加期間の影響は少なくなります。
+EOS
+      write_p(f, <<EOS)
+  表を左から右にたどると、選句者が誰に投票する傾向があるか分かります。上から下にたどると、投句者が誰に選ばれる傾向があるか分かります。
+EOS
+      write_table(f, "score_sheet") do
+        write_tr_th(f, nil) do
+          write_th(f, "")
           @authors.each do |author|
-            if author == voter then
-              write_td_blackout(f, "")
-            else
-              write_td(f, voter.vote_ratio(author))
+            write_th(f, author.name)
+          end
+        end
+
+        @authors.each do |voter|
+          write_tr(f, nil) do 
+            write_td(f, nil) do
+              write_author_link(f, voter)
+            end
+            @authors.each do |author|
+              if author == voter then
+                write_td_blackout(f, "")
+              else
+                write_td(f, voter.vote_ratio(author))
+              end
             end
           end
         end
       end
+      write_footer(f)
     end
   end
 
@@ -510,8 +581,10 @@ EOS
 <META http-equiv="Content-Type" content="text/html; charset=shift_jis">
 <META name="generator" content="hanamizuki.rb">
 <META name="description" content="句会 花水木">
+<link rel="shortcut icon" href="http://sakura-mochi.net/favicon.png" type="image/vnd.microsoft.icon" />
+<link rel="icon" href="http://sakura-mochi.net/favicon.png" type="image/vnd.microsoft.icon" />
 EOS
-    f.print("<TITLE>#{@title}</TITLE>\n")
+    f.print("<TITLE>#{@site_name}</TITLE>\n")
     write_css(f)
     f.print(<<EOS)
 </HEAD>
@@ -548,11 +621,39 @@ EOS
 
       write_site_description(f)
       write_hr(f, "shadow_down")
-      write_authors(f)
+
+      write_h1(f, "季題")
       write_themes(f)
-      write_authors_ranking(f)
-      write_haiku_ranking(f)
-      write_vote_analysis(f)
+      write_hr(f, "shadow_down")
+
+      write_h1(f, "個人総合成績(TOP 10)")
+      write_authors_ranking(f, 10)
+      write_ul(f, nil) do
+        write_li(f, nil) do
+          write_link(f, "#{@my_url}/#{author_rank_file()}", "全成績")
+        end
+        write_li(f, nil) do
+          write_link(f, "#{@my_url}/#{author_profile_file()}", "俳号一覧")
+        end
+      end
+      write_hr(f, "shadow_down")
+
+      write_h1(f, "俳句別総合成績(TOP 10)")
+      write_haiku_ranking(f, 10)
+      write_ul(f, nil) do
+        write_li(f, nil) do
+          write_link(f, "#{@my_url}/#{haiku_rank_file()}", "全成績")
+        end
+      end
+      write_hr(f, "shadow_down")
+
+      write_h1(f, "選句の傾向")
+      write_ul(f, nil) do
+        write_li(f, nil) do
+          write_link(f, "#{@my_url}/#{vote_file()}", "選句率表")
+        end
+      end
+      write_hr(f, "shadow_down")
 
       write_footer(f, true)
     end
@@ -572,5 +673,10 @@ EOS
     @themes.each_word() do |word|
       write_word_file(word)
     end
+
+    write_vote_file()
+    write_author_rank_file()
+    write_author_profile_file()
+    write_haiku_rank_file()
   end
 end

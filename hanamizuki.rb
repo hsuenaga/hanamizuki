@@ -11,8 +11,8 @@ require 'html_writer'
 #
 # Name Configuration
 #
-MyURL = "http://www3037uo.sakura.ne.jp"
-Title = "花水木7月"
+MyURL = "http://www.sakura-mochi.net"
+Title = "花水木(平成26年7月)"
 SiteName = "花水木"
 SiteURL = "http://haiku-hanamizuki.seesaa.net"
 DataDir = "./data"

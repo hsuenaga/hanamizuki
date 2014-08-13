@@ -1,4 +1,6 @@
 all: parse
+
+deploy: parse
 	cp -r deploy/* /home/www/hanamizuki
 
 parse:
