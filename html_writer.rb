@@ -327,7 +327,11 @@ class HtmlWriter
               write_haiku_link(f, haiku)
             end
             write_td(f, nil) do
-              write_author_link(f, haiku.author)
+              if haiku.author
+                write_author_link(f, haiku.author)
+              else
+                write_text(f, "選考中")
+              end
             end
             write_td(f, haiku.point)
           end
@@ -355,7 +359,11 @@ class HtmlWriter
               write_haiku_link(f, haiku)
             end
             write_td(f, nil) do
-              write_author_link(f, haiku.author)
+              if haiku.author
+                write_author_link(f, haiku.author)
+              else
+                write_text(f, "選考中")
+              end
             end
             write_td(f, haiku.point)
           end
@@ -461,7 +469,11 @@ EOS
             write_haiku_link(f, haiku)
           end
           write_td(f, nil) do
-            write_author_link(f, author)
+            if author
+              write_author_link(f, author)
+            else
+              write_text(f, "選考中")
+            end
           end
           write_td(f, haiku.point)
           theme = @themes.byfname(haiku.fname)
@@ -495,7 +507,11 @@ EOS
       write_header(f)
       write_h1(f, nil) do
         write_text(f, "#{haiku.composition}<br>")
-        write_text(f, "−#{author.name}")
+        if author
+          write_text(f, "−#{author.name}")
+        else
+          write_text(f, "−選考中")
+        end
       end
       write_hr(f, "shadow_down")
       theme = @themes.byfname(haiku.fname)

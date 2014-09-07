@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# -*- coding: utf-8 -*-
 require 'optparse'
 require 'user_exception'
 require 'author'
@@ -12,7 +13,7 @@ require 'html_writer'
 # Name Configuration
 #
 MyURL = "http://www.sakura-mochi.net"
-Title = "花水木(平成26年7月)"
+Title = "花水木(平成26年8月)"
 SiteName = "花水木"
 SiteURL = "http://haiku-hanamizuki.seesaa.net"
 DataDir = "./data"
@@ -65,7 +66,7 @@ class Hanamizuki
   end
 
   def parse_haiku(composition, author, word)
-    author = @authors.append(author)
+    author = @authors.append(author) if author
     @haikus.append(@cur_file, composition, author, word)
   end
 
@@ -108,7 +109,7 @@ class Hanamizuki
           parse_author(a[0])
           @cur_voter = a[0]
         else
-          raise ParseError
+          parse_haiku(a[0], nil, @cur_word)
         end
       when 2
         parse_haiku(a[0], a[1], @cur_word)
