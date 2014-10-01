@@ -102,10 +102,10 @@ class Hanamizuki
 
       case a.count()
       when 1
-        if a[0].index("「")
+        if a[0] =~ /^「/
           parse_theme(a[0])
           @cur_word = a[0]
-        elsif a[0].index("選")
+        elsif a[0] =~ /選$/
           parse_author(a[0])
           @cur_voter = a[0]
         else
