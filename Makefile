@@ -1,7 +1,14 @@
-all: parse
+all: stage
+
+stage: parse
+	mkdir -p /home/www/hanamizuki/stage
+	rm -f /home/www/hanamizuki/stage/*.html
+	cp -r deploy/* /home/www/hanamizuki/stage
+	cp -r icon/* /home/www/hanamizuki/stage
 
 deploy: parse
-	rm -rf /home/www/hanamizuki/*
+	mkdir -p /home/www/hanamizuki
+	rm -f /home/www/hanamizuki/*.html
 	cp -r deploy/* /home/www/hanamizuki
 	cp -r icon/* /home/www/hanamizuki
 

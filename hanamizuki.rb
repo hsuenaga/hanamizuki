@@ -136,20 +136,26 @@ class Hanamizuki
     end
   end
 
-  def html(output)
+  def html(output, stage)
     writer = HtmlWriter.new(@themes, @authors, @haikus, @votes)
     writer.title = Title
     writer.site_name = SiteName
     writer.site_url = SiteURL
-    writer.my_url = MyURL
+    if stage
+      writer.my_url = MyURL + "/stage"
+    else
+      writer.my_url = MyURL
+    end
     writer.write(output)
   end
 end
 
 def main()
   output = nil
+  stage = true
   opt = OptionParser.new()
   opt.on('-o VAL') {|v| output=v}
+  opt.on('-p') {stage = false}
   opt.parse!(ARGV)
 
   output = nil if output == "-"
@@ -160,6 +166,6 @@ def main()
     hanamizuki.load(f)
   end
 
-  hanamizuki.html(output)
+  hanamizuki.html(output, stage)
 end
 main()
