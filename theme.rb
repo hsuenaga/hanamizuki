@@ -11,12 +11,13 @@ end
 class Theme
   attr_reader :fname, :words, :winner, :winner_point, :id
 
-  def initialize(fname, id)
+  def initialize(fname, id, date)
     @fname = fname
     @id = id
     @words = Array.new()
     @winner = nil
     @winner_point = 0
+    @date = date
   end
 
   def add(string, id)
@@ -51,46 +52,55 @@ class ThemeList
     @word_id = 0
   end
 
+  def fname2date(string)
+    tok = string.split("-")
+    year = tok[0]
+    month = tok[1]
+    @date = year.to_i() * 10000 + month.to_i() * 100
+  end
+
   def append(fname, word)
     theme = nil
-    if @themes.has_key?(fname)
-      theme = @themes[fname]
+    date = fname2date(fname)
+    if @themes.has_key?(date)
+      theme = @themes[date]
       if word then
         theme.add(word, @word_id)
         @word_id += 1
       end
     else
-      theme = Theme.new(fname, @theme_id)
+      theme = Theme.new(fname, @theme_id, date)
       @theme_id += 1
       if word then
         theme.add(word, @word_id)
         @word_id += 1
       end
-      @themes[fname] = theme
+      @themes[date] = theme
     end
     theme
   end
 
   def byfname(fname)
-    if !@themes.has_key?(fname)
+    date = fname2date(fname)
+    if !@themes.has_key?(date)
       raise RuntimeError
     end
-    @themes[fname]
+    @themes[date]
   end
 
   def each(&block)
     theme_list = @themes.keys().sort()
 
-    theme_list.each do |theme|
-      block.call(@themes[theme])
+    theme_list.each do |date|
+      block.call(@themes[date])
     end
   end
 
   def each_word(&block)
     theme_list = @themes.keys().sort()
 
-    theme_list.each do |theme|
-      @themes[theme].each do |word|
+    theme_list.each do |date|
+      @themes[date].each do |word|
         block.call(word)
       end
     end
@@ -103,5 +113,3 @@ class ThemeList
     return nil
   end
 end
-
-
