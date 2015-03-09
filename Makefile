@@ -13,6 +13,8 @@ deploy: parse
 	cp -r icon/* /home/www/hanamizuki
 
 parse:
+	mkdir -p output
+	mkdir -p deploy
 	./hanamizuki.rb -o output
 	cd output; for i in *.html; do \
 	   iconv -f utf-8 -t sjis -o ../deploy/$${i} $${i}; done
